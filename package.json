@@ -9,8 +9,8 @@
     "play": "ts-node compiled.ts"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "VinceKaj",
+  "license": "MIT",
   "dependencies": {
     "ts-node": "^10.9.1"
   }
