@@ -7,6 +7,9 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Unnecessary scripts
+old.js
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -50,6 +53,7 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+.DS_Store
 
 # Optional eslint cache
 .eslintcache
