@@ -1,5 +1,5 @@
 # cie-pseudocode-compiler
-CIE Pseudocode Compiler is a transpiler for Cambridge International A-level Computer Science Pseudocode. It converts pseudocode into TypeScript, which can later be executed as a standalone `.ts` script.
+This unofficial CIE Pseudocode Compiler is a transpiler for Cambridge International A-level Computer Science Pseudocode. It converts pseudocode into TypeScript, which can later be executed as a standalone `.ts` script.
 
 The full CIE Pseudocode guide can be found [here](https://learnlearn.uk/alevelcs/wp-content/uploads/sites/20/2020/09/9608_PSEUDOCODE_GUIDE.pdf).
 
