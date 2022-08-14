@@ -5,13 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "play": "ts-node compiled.ts"
+    "start": "node index.js; node compiled.js"
   },
   "keywords": [],
   "author": "VinceKaj",
-  "license": "MIT",
-  "dependencies": {
-    "ts-node": "^10.9.1"
-  }
+  "license": "MIT"
 }

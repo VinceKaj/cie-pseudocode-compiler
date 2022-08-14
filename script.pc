@@ -1,13 +1,13 @@
 PROCEDURE PrintNames(BYVAL filename : STRING)
-  DECLARE line : STRING
+  DECLARE line : STRING // this variable will store each line
 
   OUTPUT "Reading file " & filename
 
   OPENFILE filename FOR READ
 
-  WHILE NOT EOF(filename)
-    READFILE filename, line
-    OUTPUT line
+  WHILE NOT EOF(filename) // stop at last line
+    READFILE filename, line // save current line to 'line' var
+    OUTPUT line // log that line to the console
   ENDWHILE
 
   OUTPUT "Reading finished"

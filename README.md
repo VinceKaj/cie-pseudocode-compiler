@@ -6,13 +6,10 @@ The full CIE Pseudocode guide can be found [here](https://learnlearn.uk/alevelcs
 ## How to use it
 1. Clone this repository
 2. Write your Pseudocode script in `script.pc`
-3. Run index.js with `npm run`
-4. Run the newly-generated `compiled.js` script with `npm run play`
-2. Run `npm install` to install all node package dependencies
-3. Write your Pseudocode script in `script.pc`
-4. Run index.js with `npm run`
-5. Run the newly-generated `compiled.ts` script with `npm run play`d
+3. Translate and run your pseudocode program with `npm start`
+
+The program will translate your `script.pc` file into `compiled.js`, then run the new JavaScript code.
 
 ## Authors
 This package was made by Vincentas Danys. More information can be found on the [YouTube video]() I made.
-If you would like to contribute or improve upon this package, feel free to contact me or create a [__new issue__](https://github.com/VinceKaj/cie-pseudocode-compiler/issues).
+If you would like to contribute or improve upon this package, feel free to create a [__new issue__](https://github.com/VinceKaj/cie-pseudocode-compiler/issues).

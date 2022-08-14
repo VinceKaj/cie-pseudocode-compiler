@@ -17,6 +17,7 @@ let checks = {files: {}, vars: {}}; // this will help with error detection
 
 pcLines.forEach(pcLine => {
   /* Formating */
+  pcLine = pcLine.replace(/\/\/.*/g, ''); // remove all comments
   pcLine = pcLine.replace(/  /g, ''); // remove double spaces (indentation)
   pcLine = pcLine.replace(/(?<=\w)\(/, " ("); // add space margin for front parentheses
   pcLine = pcLine.replace(/(?<=\w)\)/, " )"); // add space margin for back parentheses
