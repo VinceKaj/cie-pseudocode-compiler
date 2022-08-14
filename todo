@@ -1,4 +1,4 @@
-Done:
+__Done:__
 + Variables
   + Numbers (INTEGER & REAL)
   + STRING
@@ -21,15 +21,18 @@ Done:
 + Files
   + OPEN/Close
   + Read
+  + Write
+  + Append
++ Comments
 
-TBC:
+__TBC:__
+- Variable scopes
 - If statements
   - ELSE
 - FUNCTIONs
   - RETURN
-- Files
-  - Write/Append
 - Types
   - Custom types
-  - Validating REALs/INTEGERs
-
+  - Validating built-in types
+    - Char
+    - Arrays

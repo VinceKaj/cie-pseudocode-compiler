@@ -1,19 +1,16 @@
-PROCEDURE PrintNames(BYVAL filename : STRING)
-  DECLARE line : STRING // this variable will store each line
+PROCEDURE Duplicate(file1 : STRING, file2 : STRING)
+  DECLARE BOOLEAN : STRING
 
-  OUTPUT "Reading file " & filename
+  OPENFILE file1 FOR READ
+  OPENFILE file2 FOR WRITE
 
-  OPENFILE filename FOR READ
-
-  WHILE NOT EOF(filename) // stop at last line
-    READFILE filename, line // save current line to 'line' var
-    OUTPUT line // log that line to the console
+  WHILE NOT EOF(file1)
+    READFILE file1, line
+    WRITEFILE file2, line
   ENDWHILE
 
-  OUTPUT "Reading finished"
-
-  CLOSEFILE filename
-
+  CLOSEFILE file2
+  CLOSEFILE file1
 ENDPROCEDURE
 
-CALL PrintNames("data/names.txt")
+Duplicate("data/names.txt", "data/new.txt")
