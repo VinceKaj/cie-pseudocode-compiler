@@ -8,6 +8,10 @@ The full CIE Pseudocode guide can be found [here](https://learnlearn.uk/alevelcs
 2. Write your Pseudocode script in `script.pc`
 3. Run index.js with `npm run`
 4. Run the newly-generated `compiled.js` script with `npm run play`
+2. Run `npm install` to install all node package dependencies
+3. Write your Pseudocode script in `script.pc`
+4. Run index.js with `npm run`
+5. Run the newly-generated `compiled.ts` script with `npm run play`d
 
 ## Authors
 This package was made by Vincentas Danys. More information can be found on the [YouTube video]() I made.
