@@ -1,19 +1,19 @@
-PROCEDURE FizzBuzz(BYVAL iterations : INTEGER)
-  DECLARE i : INTEGER
-  DECLARE str : STRING
+PROCEDURE PrintNames(BYVAL filename : STRING)
+  DECLARE line : STRING
 
-  FOR i <- 1 TO iterations
-    str <- ""
-    IF i MOD 3 = 0 THEN
-      str <- str & "Fizz"
-    ENDIF
+  OUTPUT "Reading file " & filename
 
-    IF i MOD 5 = 0 THEN
-      str <- str & "Buzz"
-    ENDIF
+  OPENFILE filename FOR READ
 
-    OUTPUT i, str
-  NEXT i
+  WHILE NOT EOF(filename)
+    READFILE filename, line
+    OUTPUT line
+  ENDWHILE
+
+  OUTPUT "Reading finished"
+
+  CLOSEFILE filename
+
 ENDPROCEDURE
 
-CALL FizzBuzz(100)
+CALL PrintNames("data/names.txt")

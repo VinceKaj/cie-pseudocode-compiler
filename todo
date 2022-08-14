@@ -1,0 +1,35 @@
+Done:
++ Variables
+  + Numbers (INTEGER & REAL)
+  + STRING
+  + BOOLEAN
+  + Constants
++ Operators
+  + Plus
+  + Minus
+  + Times
+  + Equals
+  + Assign
+  + Modulus
++ PROCEDUREs
+  + Parameters BYVAL
+  + CALL
++ Loops
+  + FOR loops
++ If statements
+  + IF
++ Files
+  + OPEN/Close
+  + Read
+
+TBC:
+- If statements
+  - ELSE
+- FUNCTIONs
+  - RETURN
+- Files
+  - Write/Append
+- Types
+  - Custom types
+  - Validating REALs/INTEGERs
+
