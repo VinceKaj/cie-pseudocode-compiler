@@ -1,33 +1,42 @@
 const fs = require('fs');
-
 const error = (str) => { throw(`Error at script.pc:${processedLines.length-7}: ${str}`) };
 
 const ReservedWords = [
   'APPEND', 'ARRAY', 'BOOLEAN', 'CALL', 'CHAR', 'CLOSEFILE', 'CONSTANT', 'DECLARE', 'DIV', 'ELSE', 'ENDFUNCTION', 'ENDPROCEDURE', 'ENDWHILE', 'FOR', 'FUNCTION', 'IF', 'INPUT', 'INTEGER', 'MOD', 'NEXT', 'OPENFILE', 'OUTPUT', 'PROCEDURE', 'READ', 'READFILE', 'REAL', 'RETURN', 'RETURNS', 'STRING', 'THEN', 'TO', 'TYPE', 'WHILE', 'WRITE', 'WRITEFILE'
-]
+];
 
-function ChecksConstructor() {
-  this.files = {};
-  this.vars = {};
-  this.functions = {};
+const TypeOf = (x) => {
+  x = eval(x) // convert string into actual value
+  if (typeof(x) === 'number')
+    return (x % 1 === 0 ? 'int' : 'float');
+  return typeof(x);
+}
 
-  this.addVar = (name, value, type, constant=false) => {
+let checks = {
+
+  files: {},
+  vars: {},
+  functions: {},
+
+  addVar: (name, value, varType, constant=false) => {
     if (ReservedWords.includes(name)) error(`Identifier cannot have name ${name}`);
-    if (this.vars[name]) error(`Cannot re-define identifier '${split[1]}'.`);
-    this.vars[name] = {value: value, type: type, constant: constant};
-  };
+    if (checks.vars[name]) error(`Cannot re-define identifier '${split[1]}'.`);
+    if (value * 1 == value) value = value * 1 // convert numbers into numbers
+    
+    checks.vars[name] = {value: value, type: (varType || TypeOf(value)), constant: constant};
+  },
 
-  this.addFile = (name, state) => {
+  addFile: (name, state) => {
     if (!["READ", "WRITE", "APPEND"].includes(state)) error(`No such file operator '${state}'`);
-    if (this.files[name] && this.files[name].state !== "closed") error('Cannot open an already open file');
-    this.files[name] = {state: state};
-  }
+    if (checks.files[name] && checks.files[name].state !== "closed") error('Cannot open an already open file');
+    checks.files[name] = {state: state};
+  },
 
-  this.closeFile = (name) => {
-    if (!this.files[name] || this.files[name].state === "closed")
+  closeFile: (name) => {
+    if (!checks.files[name] || checks.files[name].state === "closed")
       error("Cannot close a file that isn't open");
-    this.files[name].state = "closed";
-  }
+    checks.files[name].state = "closed";
+  },
 }
 
 const GetFileName = (str) => {
@@ -39,38 +48,36 @@ const GetFileName = (str) => {
   else return null;
 }
 
-const type = (x) => {
-  if (typeof(x) === 'number')
-    return (x % 1 === 0 ? 'int' : 'float');
-  return typeof(x);
-}
-
 function ConvertType(type) {
   switch (type) {
     case "INTEGER": return "int";
     case "REAL": return "float"; // no way to differentiate
     case "STRING": return "string";
     case "BOOLEAN": return "boolean";
+    case "ARRAY": return "object";
     default: error(`Type error: Unknown type '${type}'`);
+    // add custom Pseudocode types
   }
 }
 
 function ConvertLine(split) {
 
   const identifier = GetFileName(split.join(' '));
+  let varType;
 
   switch (split[0]) {
     case "DECLARE": { 
-      const type = ConvertType(split.pop());
-      const vars = split.splice(1,split.length-2).join("").split(" , ");
-      vars.forEach(v => checks.addVar(v, null, type));
+      split = split.join(' ').split(/(?: ?\: ?|,? )/g);
+      varType = ConvertType(split.pop()); // convert Pseudocode type to JS type
+      const vars = split.splice(1,split.length); // ignore first element: "DECLARE"
+      vars.forEach(v => checks.addVar(v, null, varType));
       return `let ${vars.join(', ')}`;
     }
     case "CONSTANT": {
       let statement = split.join(' ').replace(/CONSTANT/, 'const').replace(/===/g, '=');
       let val = eval(statement + `; ${split[1]}`);
-      checks.addVar(split[1], val, type(val), true); // saves the constant, to record its changes
-      return `const ${split[1]} = ${type(val) === 'string' ? `"${val}"` : val}`;
+      checks.addVar(split[1], val, TypeOf(val), true); // saves the constant, to record its changes
+      return `const ${split[1]} = ${TypeOf(val) === 'string' ? `"${val}"` : val}`;
     }
     case "PROCEDURE": {
       let match = split.join(' ').match(/\((.+)\)/);
@@ -82,7 +89,7 @@ function ConvertLine(split) {
       parSplit.forEach(param => {
         let varSplit = param.split(' ');
         let varName = (['BYREF', 'BYVAL'].includes(varSplit[0]) ? varSplit[1] : varSplit[0]); // if there's a BYREF or BYVAL, ignore it
-        let varType = ConvertType(varSplit.pop());
+        varType = ConvertTypeOf(varSplit.pop());
         checks.vars[varName] = {type: varType, value: null, constant: false}; // save variable to compiler (TODO: scoping)
         parameters.push(varName);
       });
@@ -96,14 +103,21 @@ function ConvertLine(split) {
       
     }
     case "IF": {
-      return `if(${split.slice(1, split.length-1).join(' ')})`;
+      let last = split.pop();
+      split.push((last == "{" ? ") {" : ")"));
+      return `if(${split.slice(1, split.length).join(' ')}`;
     }
     case "FOR": {
-      let toIndex = split.indexOf('TO');
-      return `for(${split.slice(1,toIndex).join(' ')}; ${split[1]} <= ${split[5]}; ${split[1]}++) {`;
+      let [func, i, min, max] = split.join(' ').split(/(?: ?<- ?| ?TO ?| )+/g);
+      return `for (${i} = ${min}; ${i} <= ${max}; ${i}++) {`;
     }
     case "WHILE": {
       return `while(${split.slice(1, split.length).join(' ')}) {`;
+    }
+    case "INPUT": {
+      if (!checks.vars[split[1]]) error(`'Cannot perform input on undeclared ${split[1]}`);
+      if (checks.vars[split[1]].constant) error(`Cannot perform input on constant ${split[1]}`);
+      return `${split[1]} = require('prompt-sync')()();`
     }
     case "OUTPUT": {
       return `console.log(${split.slice(1,split.length).join(' ')})`;
@@ -155,8 +169,6 @@ let processedLines = [
   "\n/* Translated begins here code */"
 ];
 
-let checks = new ChecksConstructor(); // this will help with error detection
-
 pcLines.forEach(pcLine => {
 
   /* Formating */
@@ -169,28 +181,11 @@ pcLines.forEach(pcLine => {
   /*** REPLACES ***/
   // Operators
   pcLine = pcLine.replace(/MOD/g, '%');
-  pcLine = pcLine.replace(/=/g, '===');
+  pcLine = pcLine.replace(/(?<!<|>)=/g, '===');
   pcLine = pcLine.replace(/&/g, "+");
   pcLine = pcLine.replace(/NOT/g, "!");
   pcLine = pcLine.replace(/AND/g, "&&");
-  pcLine = pcLine.replace(/OR/g, "||");
-
-  // Assignment checks (constant assignment, data type checks, declaration checks)
-  if (pcLine.includes('<-')) {
-    let split = pcLine.split(' ');
-
-    if (!checks.vars[split[0]])
-      error(`Cannot assign value to undeclared variable '${split[0]}'`);
-    else if (checks.vars[split[0]].constant)
-      error(`Cannot assign value to constant variable '${split[0]}'`);
-
-    const val = pcLine.match(/(?<=(?:\<-[ ?])).+/); // match everything after the '<-'
-    if (checks.vars[split[0]].type !== typeof(val))
-      error(`Cannot assign value to identifier '${split[0]}' of a different data type`);
-  
-    checks.vars[split[0]].value = val;
-    pcLine = pcLine.replace(/<-/, '=');
-  }
+  pcLine = pcLine.replace(/^[^a-zA-Z]*OR/g, "||");
 
   // Functions
   pcLine = pcLine.replace(/ENDPROCEDURE/, '}');
@@ -220,6 +215,22 @@ pcLines.forEach(pcLine => {
       // EOF(identifier) -> check length of file array
       jsLine = jsLine.replace(e, `(_[${identifier}].length === 0)`);
     });
+  }
+
+  // Assignment checks (constant assignment, data type checks, declaration checks). These conflict with FOR
+  if (jsLine.includes('<-')) {
+    let [element, value] = jsLine.split(/ ?<- ?/g);
+
+    if (!checks.vars[element])
+      error(`Cannot assign value to undeclared variable '${element}'`);
+    else if (checks.vars[element].constant)
+      error(`Cannot assign value to constant variable '${element}'`);
+
+    if (!value.includes(element) && checks.vars[element].type !== TypeOf(value)) // first, make sure the "value" doesn't contain the var's name
+      error(`Cannot assign value to '${element}' of a different data type`);
+  
+    checks.vars[element].value = value;
+    jsLine = jsLine.replace(/<-/, '=');
   }
 
   processedLines.push(jsLine);

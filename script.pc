@@ -1,16 +1,10 @@
-PROCEDURE Duplicate(file1 : STRING, file2 : STRING)
-  DECLARE BOOLEAN : STRING
+DECLARE iterator : INTEGER
 
-  OPENFILE file1 FOR READ
-  OPENFILE file2 FOR WRITE
+iterator <- 99
 
-  WHILE NOT EOF(file1)
-    READFILE file1, line
-    WRITEFILE file2, line
-  ENDWHILE
-
-  CLOSEFILE file2
-  CLOSEFILE file1
-ENDPROCEDURE
-
-Duplicate("data/names.txt", "data/new.txt")
+WHILE iterator <= 201
+  IF iterator MOD 2 = 0 THEN
+    OUTPUT iterator
+  ENDIF
+  iterator <- iterator + 1
+ENDWHILE
