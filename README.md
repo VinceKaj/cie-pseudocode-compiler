@@ -1,7 +1,7 @@
 # cie-pseudocode-compiler
 This unofficial CIE Pseudocode Compiler is a transpiler for Cambridge International A-level Computer Science Pseudocode. It converts pseudocode into JavaScript, which can later be executed as a standalone `.js` script.
 
-The full CIE Pseudocode guide can be found [here](https://github.com/VinceKaj/cie-pseudocode-compiler/blob/main/pseudocode-guide.pdf) \[PDF\] (from 2021).
+The full CIE Pseudocode guide can be found [here](https://github.com/VinceKaj/cie-pseudocode-compiler/raw/main/pseudocode_guide.pdf) \[PDF\] (from 2021).
 
 ## How to use it
 
