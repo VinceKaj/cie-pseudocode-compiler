@@ -1,10 +1,20 @@
-DECLARE iterator : INTEGER
+DECLARE nums : ARRAY[1:10] OF INTEGER
+DECLARE i : INTEGER
 
-iterator <- 99
+FOR i <- 1 TO LENGTH(nums)
+  INPUT nums[i]
+NEXT i
 
-WHILE iterator <= 201
-  IF iterator MOD 2 = 0 THEN
-    OUTPUT iterator
-  ENDIF
-  iterator <- iterator + 1
-ENDWHILE
+FUNCTION GetAverage(arr : ARRAY[1:10] OF INTEGER) RETURNS REAL
+
+  DECLARE sum : REAL
+  sum <- 0
+
+  FOR i <- 1 TO LENGTH(arr)
+    sum <- sum + arr[i]
+  NEXT i
+
+  RETURN sum / LENGTH(arr)
+ENDFUNCTION
+
+OUTPUT "Average of your input is: ", GetAverage(nums)

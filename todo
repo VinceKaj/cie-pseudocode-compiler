@@ -4,6 +4,7 @@ __Done:__
   + STRING
   + BOOLEAN
   + Constants
+  + Arrays
 + Operators
   + Plus
   + Minus
@@ -18,21 +19,26 @@ __Done:__
   + FOR loops
 + If statements
   + IF
-+ Files
-  + OPEN/Close
-  + Read
-  + Write
-  + Append
+  + Else
 + Comments
++ I/O
+  + INPUT
+  + OUTPUT
+  + Files
+    + OPEN/CLOSE
+    + Read
+    + Write, Append
++ FUNCTIONs
+  + RETURN
 
 __TBC:__
 - Variable scopes
-- If statements
-  - ELSE
-- FUNCTIONs
-  - RETURN
 - Types
   - Custom types
+  - Multi-dimensional arrays
   - Validating built-in types
-    - Char
-    - Arrays
+    - TYPE
+
+
+functionName.variableName
+global.variableName

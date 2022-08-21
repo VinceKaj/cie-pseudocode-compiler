@@ -1,14 +1,14 @@
 {
-  "name": "pseudocode-compiler",
+  "name": "cie-pseudocode-compiler",
   "version": "1.0.0",
-  "description": "",
+  "description": "A CIE Pseudocode-to-JavaScript transpiler",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node index.js",
     "start": "node index.js; node compiled.js"
   },
   "keywords": [],
-  "author": "VinceKaj",
+  "author": "Vincentas Danys",
   "license": "MIT",
   "dependencies": {
     "prompt-sync": "^4.2.0"
