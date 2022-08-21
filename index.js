@@ -1,12 +1,20 @@
 const fs = require('fs');
 
 let lineCounter = 0;
-const error = (str) => { throw(`Error at script.pc:${lineCounter}: ${str}`) };
+const error = (str) => {
+  // throw(`Error at script.pc:${lineCounter}: ${str}`)
+  console.log(`script.pc:${lineCounter}`);
+  console.log(pcLines[lineCounter-1] + '\n');
+  console.log(str)
+  process.exit(1);
+};
 
+/* These words are reserved by the pseudocode language. Each declaration is checked for clashes. */
 const ReservedWords = [
   'APPEND', 'ARRAY', 'BOOLEAN', 'CALL', 'CHAR', 'CLOSEFILE', 'CONSTANT', 'DECLARE', 'DIV', 'ELSE', 'ENDFUNCTION', 'ENDPROCEDURE', 'ENDWHILE', 'FOR', 'FUNCTION', 'IF', 'INPUT', 'INTEGER', 'MOD', 'NEXT', 'OPENFILE', 'OUTPUT', 'PROCEDURE', 'READ', 'READFILE', 'REAL', 'RETURN', 'RETURNS', 'STRING', 'THEN', 'TO', 'TYPE', 'WHILE', 'WRITE', 'WRITEFILE'
 ];
 
+/* The built-in JS typeof operator doesn't specify enough types, so this custom function fills-in the rest */
 const TypeOf = (x) => {
   try { x = eval(x) } catch (e) {} // convert string into actual value
 
@@ -15,34 +23,36 @@ const TypeOf = (x) => {
   return typeof(x);
 }
 
+/* This object stores and validates all identifiers within a pseudocode script whilst translating to check for errors */
+/* TODO: update the checks system with getters and setters for readability and accuracy */
 const checks = {
 
-  identifiers: {},
+  identifiers: {}, // a list of all pseudocode user-declared identifiers
+  files: {},
 
-  identityCheck: (name) => {
+  identityCheck: (name, file=false) => { // called each time a new identifier is declared
     if (ReservedWords.includes(name)) error(`Identifier cannot have name ${name}`);
-    if (checks.identifiers[name]) error(`Cannot re-define identifier '${name}'`);
+    if (!file && checks.identifiers[name]) error(`Cannot re-define identifier '${name}'`);
   },
 
   addVar: (name, value, varType, constant=false) => {
     checks.identityCheck(name);
     if (value * 1 == value) value *= 1 // convert numbers into numbers
-    
     checks.identifiers[name] = {prop: "var", value: value, type: (varType || TypeOf(value)), constant: constant};
   },
 
   addFile: (name, state) => {
-    checks.identityCheck(name);
+    checks.identityCheck(name, true);
     if (!["READ", "WRITE", "APPEND"].includes(state)) error(`No such file operator '${state}'`);
-    if (checks.identifiers[name].prop == "file" && checks.identifiers[name].state !== "closed")
+    if (checks.files[name] && checks.files[name].state !== "closed")
       error('Cannot open an already open file');
-    checks.identifiers[name] = {prop: "file", state: state};
+    checks.files[name] = {state: state};
   },
 
   closeFile: (name) => {
-    if (!checks.identifiers[name] || checks.identifiers[name].prop == "file" && checks.identifiers[name].state === "closed")
+    if (!checks.files[name] && checks.files[name].state === "closed")
       error("Cannot close a file that isn't open");
-    checks.identifiers[name].state = "closed";
+    checks.files[name].state = "closed";
   },
 
   addArray: (name, type, min, max) => {
@@ -51,24 +61,28 @@ const checks = {
   }
 }
 
+/* This is an outdated function. Needs to be replaced soon */
+/* GetFileName(str): for a line of pseudocode, try to match either an identifier name or a "string" */
 const GetFileName = (str) => {
   let match = str.match(/"(.+)"/); // try to match string filename. E.g.: "filename.txt"
   if (match)
-    return `'${match[1]}'`; // return 'filename.txt'
+    return `"${match[1]}"`; // return 'filename.txt'
   if (str.split(' ')[1]?.match(/[\w ]+/))
     return str.split(' ')[1]?.match(/[\w ]+/)[0]; // if there isn't a string, return it as a variable. E.g.: filename
   else return null;
 }
 
+/* This function is outdated. Once all JS types are converted to pseudocode types, this function can be removed */
+/* Converts types between JS and pseudocode */
 function ConvertType(type) {
   switch (type) {
     case "INTEGER": return "int";
-    case "REAL": return "float"; // no way to differentiate
+    case "REAL": return "float";
     case "STRING": return "string";
     case "BOOLEAN": return "boolean";
     case "ARRAY": return "object";
-    default: error(`Type error: Unknown type '${type}'`);
-    // add custom Pseudocode types
+    default: error(`Unknown type '${type}'`);
+    // TODO: add custom Pseudocode types
   }
 }
 
@@ -87,8 +101,12 @@ function ConvertLine(split) {
         typeArgs = typeArgs.join(':').split(' '); // spaces 
         
         const arrType = ConvertType(typeArgs.pop());
-        let [min, max] = typeArgs[1].match(/\d+/g);
+        let [min, max] = typeArgs[1].match(/\[(.+)\]/)[1].split(':');
         let returnArr = [ ];
+
+        if (min*1 == min && max*1 == max && min > max) error('Range of array cannot be backwards');
+        if (max*1 == max && (max % 1 !== 0 || max < 0)) error('Max value must be a non-negative integer');
+        if (min*1 == min && (min % 1 !== 0 || min < 0)) error('Min value must be a non-negative integer');
 
         identifiers.forEach(i => {
           returnArr.push(`const ${i} = _.Array(${min}, ${max}, '${i}')`);
@@ -173,11 +191,11 @@ function ConvertLine(split) {
     case "OPENFILE": {
       checks.addFile(identifier, split.pop());
 
-      if (checks.identifiers[identifier].state === "READ")
+      if (checks.files[identifier].state === "READ")
         return `_[${identifier}] = require("fs").readFileSync(${identifier}, {encoding: "utf-8"}).split("\\n")`; // no JS code for opening files
-      else if (checks.identifiers[identifier].state === "WRITE")
+      else if (checks.files[identifier].state === "WRITE")
         return `require("fs").writeFileSync(${identifier}, "", {encoding: "utf-8"})`;
-      else (checks.identifiers[identifier].state === "APPEND")
+      else (checks.files[identifier].state === "APPEND")
         return "";
     }
     case "CLOSEFILE": {
@@ -185,12 +203,12 @@ function ConvertLine(split) {
       return `_[${identifier}] = null`; // no JS code for closing files
     }
     case "READFILE": {
-      if (!checks.identifiers[identifier] || checks.identifiers[identifier].state != "READ")
+      if (!checks.files[identifier] || checks.files[identifier].state != "READ")
         error("Cannot read file that is not open for reading");
       return `${split[3]} = _[${identifier}].splice(0, 1)[0]`; // "read one line"
     }
     case "WRITEFILE": {
-      if (!checks.identifiers[identifier] || checks.identifiers[identifier].state != "WRITE")
+      if (!checks.files[identifier] || checks.files[identifier].state != "WRITE")
         error("Cannot write to file that is not open for writing");
 
       let dataToWrite = split.join(' ').match(/(?<=, ).+/);
@@ -206,6 +224,8 @@ function ConvertLine(split) {
 
 let pcLines = fs.readFileSync('script.pc', {encoding: 'utf-8'}).split('\n');
 
+/* This is all code necessary to run most (but not all) pseudocode scripts. */
+/* Includes: common built-in pseudocode functions, array constructors, environemnt variables */
 const headerLines = [
   "/* Built-in pseudocode functions */",
   "const MID = (str, start, end) => str.slice(start-1, end+1);",
@@ -226,7 +246,7 @@ fs.writeFileSync('compiled.js', headerLines.join('\n')); // create new compiled.
 
 pcLines.forEach(pcLine => {
 
-  lineCounter++;
+  lineCounter++; // this is only necessary for displaying line error on error messages
 
   /* Formating */
   pcLine = pcLine.replace(/\/\/.*/g, ''); // remove all comments
@@ -237,16 +257,15 @@ pcLines.forEach(pcLine => {
   pcLine = pcLine.replace(/(?<=\w)\]/g, "] "); // add space margin for back brackets: "[a]b" -> "[a] b"
   pcLine = pcLine.replace(/[ +]?,[ +]?/g, " , "); // add spaces around commas: 'a,b' -> 'a , b'
 
-  /*** REPLACES ***/
-  // Operators
-  pcLine = pcLine.replace(/MOD/g, '%');
-  pcLine = pcLine.replace(/(?<!<|>)=/g, '===');
+  /* Operators */
+  pcLine = pcLine.replace(/MOD/g, '%'); // modulus
+  pcLine = pcLine.replace(/(?<!<|>)=/g, '==='); // equal sign, unless it is a "<=" or ">="
   pcLine = pcLine.replace(/&/g, "+");
   pcLine = pcLine.replace(/NOT/g, "!");
-  pcLine = pcLine.replace(/AND/g, "&&");
-  pcLine = pcLine.replace(/^[^a-zA-Z]*OR/g, "||");
-  pcLine = pcLine.replace(/TRUE/g, "true");
-  pcLine = pcLine.replace(/FALSE/g, "false");
+  pcLine = pcLine.replace(/AND/g, "&&"); // "AND", (TODO: don't match AND within a word)
+  pcLine = pcLine.replace(/^[^a-zA-Z]*OR/g, "||"); // "OR", unless it is preceeded by letters
+  pcLine = pcLine.replace(/TRUE/g, "true"); // TODO: make sure this isn't in a string?
+  pcLine = pcLine.replace(/FALSE/g, "false"); // TODO: make sure this isn't in a string?
 
   // Functions
   pcLine = pcLine.replace(/ENDPROCEDURE/, '}');
@@ -260,7 +279,7 @@ pcLines.forEach(pcLine => {
   // IFs
   pcLine = pcLine.replace(/ENDIF/g, '}');
   pcLine = pcLine.replace(/THEN/g, '{');
-  pcLine = pcLine.replace(/ELSE/g, '} else {');``
+  pcLine = pcLine.replace(/ELSE/g, '} else {');`` // the compiler doesn't use "else if", it uses else { if } (like real pseudocode)
 
   let jsLine = ConvertLine(pcLine.split(/ +/g));
 
@@ -275,12 +294,12 @@ pcLines.forEach(pcLine => {
 
       if (checks.identifiers[identifier].state != "READ")
         error("Cannot read EOF of file not open for reading.");
-      // EOF(identifier) -> check length of file array
-      jsLine = jsLine.replace(e, `(_[${identifier}].length === 0)`);
+
+      jsLine = jsLine.replace(e, `(_[${identifier}].length === 0)`); // file "reading" is only simulated, so is EOF
     });
   }
 
-  // Assignment checks (constant assignment, data type checks, declaration checks). These conflict with FOR
+  /* Assignment checks (constant assignment, data type checks, declaration checks). These conflict with FOR loops */
   if (jsLine.includes('<-')) {
     let [element, value] = jsLine.split(/ ?<- ?/g);
 
@@ -289,6 +308,8 @@ pcLines.forEach(pcLine => {
     else if (checks.identifiers[element].constant)
       error(`Cannot assign value to constant variable '${element}'`);
 
+    /* The below commented out lines are responsible for all type checking. The system is broken */
+    /* TODO: Fix type checking */
     // if (!value.includes(element) && checks.identifiers[element].type !== TypeOf(value) || checks.identifiers[element.type] == "float" && !['float', 'int'].includes(TypeOf(value))) // first, make sure the "value" doesn't contain the var's name
     //   error(`Cannot assign value to '${element}' of a different data type`);
   
@@ -300,8 +321,10 @@ pcLines.forEach(pcLine => {
 });
 
 /* Check if all files were closed at the end of the script */
-Object.keys(checks.identifiers).forEach(i => {
-  if (checks.identifiers[i].prop == "file" && checks.identifiers[i].state != "closed")
+Object.keys(checks.files).forEach(i => {
+  if (checks.files[i].state != "closed") {
+    lineCounter = pcLines.findIndex(l => l.includes("OPENFILE " + i)) + 1; // find the line with the supposed unclosed file
     error("Cannot execute script with unclosed files.");
+  }
 })
 

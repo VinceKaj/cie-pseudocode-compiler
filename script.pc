@@ -1,20 +1,5 @@
-DECLARE nums : ARRAY[1:10] OF INTEGER
-DECLARE i : INTEGER
 
-FOR i <- 1 TO LENGTH(nums)
-  INPUT nums[i]
-NEXT i
 
-FUNCTION GetAverage(arr : ARRAY[1:10] OF INTEGER) RETURNS REAL
-
-  DECLARE sum : REAL
-  sum <- 0
-
-  FOR i <- 1 TO LENGTH(arr)
-    sum <- sum + arr[i]
-  NEXT i
-
-  RETURN sum / LENGTH(arr)
-ENDFUNCTION
-
-OUTPUT "Average of your input is: ", GetAverage(nums)
+OPENFILE "test.js" FOR READ
+CLOSEFILE "test.js"
+OPENFILE "package.json" FOR READ
