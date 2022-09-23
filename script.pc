@@ -1,5 +1,30 @@
+FUNCTION bubbleSort(theArray : ARRAY[1:10] OF INTEGER) RETURNS ARRAY[1:10] OF INTEGER
+  DECLARE temp, x, y : INTEGER
 
+  FOR x <- 1 TO 9
+    FOR y <- 1 TO 9
+      IF theArray[y] > theArray[y + 1] THEN
+        temp <- theArray[y]
+        theArray[y] <- theArray[y + 1]
+        theArray[y + 1] <- temp
+      ENDIF
+    NEXT y
+  NEXT x
 
-OPENFILE "test.js" FOR READ
-CLOSEFILE "test.js"
-OPENFILE "package.json" FOR READ
+  RETURN theArray
+ENDPROCEDURE
+
+DECLARE myArr : ARRAY[1:10] OF INTEGER
+myArr[1] <- 10
+myArr[2] <- 5
+myArr[3] <- 6
+myArr[4] <- 7
+myArr[5] <- 1
+myArr[6] <- 12
+myArr[7] <- 13
+myArr[8] <- 15
+myArr[9] <- 21
+myArr[10] <- 8
+
+OUTPUT bubbleSort(myArr)
+

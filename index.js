@@ -3,22 +3,20 @@ const fs = require('fs');
 let lineCounter = 0;
 const error = (str) => {
   // throw(`Error at script.pc:${lineCounter}: ${str}`)
-  console.log(`script.pc:${lineCounter}`);
-  console.log(pcLines[lineCounter-1] + '\n');
-  console.log(str)
+  console.error(`${pcLines[lineCounter-1]}\n\nError: ${str}\n    at script.pc:${lineCounter}`);
   process.exit(1);
 };
 
 /* These words are reserved by the pseudocode language. Each declaration is checked for clashes. */
 const ReservedWords = [
-  'APPEND', 'ARRAY', 'BOOLEAN', 'CALL', 'CHAR', 'CLOSEFILE', 'CONSTANT', 'DECLARE', 'DIV', 'ELSE', 'ENDFUNCTION', 'ENDPROCEDURE', 'ENDWHILE', 'FOR', 'FUNCTION', 'IF', 'INPUT', 'INTEGER', 'MOD', 'NEXT', 'OPENFILE', 'OUTPUT', 'PROCEDURE', 'READ', 'READFILE', 'REAL', 'RETURN', 'RETURNS', 'STRING', 'THEN', 'TO', 'TYPE', 'WHILE', 'WRITE', 'WRITEFILE'
+  '&', '*', '+', '-', '/', '//', '<', '<-', '<=', '<>', '=', '>', '>=', 'AND', 'APPEND', 'ARRAY', 'BOOLEAN', 'BYREF', 'BYVAL', 'CALL', 'CASE OF', 'CHAR', 'CLASS', 'CLOSEFILE', 'CONSTANT', 'DATE', 'DECLARE', 'DIV', 'ELSE', 'ENDCASE', 'ENDCLASS', 'ENDFUNCTION', 'ENDIF', 'ENDPROCEDURE', 'ENDTYPE', 'ENDWHILE', 'EOF', 'FALSE', 'FOR', 'FUNCTION', 'IF', 'INHERITS', 'INPUT', 'INT', 'INTEGER', 'LCASE', 'LEFT', 'LENGTH', 'MID', 'MOD', 'NEW', 'NEXT', 'NOT', 'OPENFILE', 'OR', 'OTHERWISE', 'OUTPUT', 'PRIVATE', 'PROCEDURE', 'PUBLIC', 'PUTRECORD', 'RAND', 'RANDOM', 'READ', 'READFILE', 'REAL', 'REPEAT', 'RETURN', 'RETURNS', 'RIGHT', 'SEEK', 'STEP', 'STRING', 'SUPER', 'THEN', 'TO', 'TRUE', 'TYPE', 'UCASE', 'UNTIL', 'WHILE', 'WRITE', 'WRITEFILE', '^'
 ];
 
 /* The built-in JS typeof operator doesn't specify enough types, so this custom function fills-in the rest */
 const TypeOf = (x) => {
   try { x = eval(x) } catch (e) {} // convert string into actual value
 
-  if (typeof(x) == 'string' && x.length == 1) return 'char';
+  if (typeof(x) == 'string' && x.length === 1) return 'char';
   if (typeof(x) === 'number') return (x % 1 === 0 ? 'int' : 'float');
   return typeof(x);
 }
@@ -38,7 +36,7 @@ const checks = {
   addVar: (name, value, varType, constant=false) => {
     checks.identityCheck(name);
     if (value * 1 == value) value *= 1 // convert numbers into numbers
-    checks.identifiers[name] = {prop: "var", value: value, type: (varType || TypeOf(value)), constant: constant};
+    checks.identifiers[name] = {prop: "var", value, type: (varType || TypeOf(value)), constant: constant};
   },
 
   addFile: (name, state) => {
@@ -46,7 +44,7 @@ const checks = {
     if (!["READ", "WRITE", "APPEND"].includes(state)) error(`No such file operator '${state}'`);
     if (checks.files[name] && checks.files[name].state !== "closed")
       error('Cannot open an already open file');
-    checks.files[name] = {state: state};
+    checks.files[name] = {state};
   },
 
   closeFile: (name) => {
@@ -55,9 +53,9 @@ const checks = {
     checks.files[name].state = "closed";
   },
 
-  addArray: (name, type, min, max) => {
+  addArray: (name, type, dimensions) => {
     checks.identityCheck(name);
-    checks.identifiers[name] = {prop: "array", type: type, min: min, max: max};
+    checks.identifiers[name] = {prop: "array", type, dimensions};
   }
 }
 
@@ -86,50 +84,67 @@ function ConvertType(type) {
   }
 }
 
-function ConvertLine(split) {
+function ConvertLine(line) {
 
-  const identifier = GetFileName(split.join(' '));
+  const identifier = GetFileName(line);
+  let split = line.split(' ');
   let varType;
 
   switch (split[0]) {
-    case "DECLARE": { 
-      /* Deal with arrays */
-      if (split.join(' ').includes("ARRAY")) {
+    case "DECLARE": {
 
-        let [identifiers, ...typeArgs] = split.join(' ').split(/ ?\: ?/g); // colon split (space sensitive)
+      /* Deal with arrays */
+      if (line.includes("ARRAY")) {
+
+        let [identifiers, ...typeArgs] = line.split(/ ?\: ?/g); // colon split (space sensitive)
         identifiers = identifiers.split(/ ?, ?|DECLARE /g).splice(1); // comma split, remove "DECLARE"
-        typeArgs = typeArgs.join(':').split(' '); // spaces 
+        typeArgs = typeArgs.join(':'); // spaces 
         
-        const arrType = ConvertType(typeArgs.pop());
-        let [min, max] = typeArgs[1].match(/\[(.+)\]/)[1].split(':');
+        const arrType = ConvertType(typeArgs.split(' ').pop());
+        let dimensions = typeArgs.match(/\[(.+)\]/)[1].split(/ ?, ?/g).reverse(); // match everything between square brackets, split into separate dimensions
+        let constructorStr = "null";
+
+        dimensionsArr = [];
+
+        dimensions.forEach(d => {
+          let [min, max] = d.split(/ ?\: ?/);
+          if (min*1 == min && max*1 == max && min*1 > max*1) error(`Range of array cannot be backwards (reading: lower ${min}, upper ${max})`);
+          if (max*1 == max && (max % 1 !== 0 || max*1 < 0)) error('Upper bound must be a non-negative integer');
+          if (min*1 == min && (min % 1 !== 0 || min*1 < 0)) error('Lower bound value must be a non-negative integer');
+
+          constructorStr = `_.Array(${min}, ${max}, ${constructorStr})`;
+          dimensionsArr.push([min,max]);
+        })
+
         let returnArr = [ ];
 
-        if (min*1 == min && max*1 == max && min > max) error('Range of array cannot be backwards');
-        if (max*1 == max && (max % 1 !== 0 || max < 0)) error('Max value must be a non-negative integer');
-        if (min*1 == min && (min % 1 !== 0 || min < 0)) error('Min value must be a non-negative integer');
-
         identifiers.forEach(i => {
-          returnArr.push(`const ${i} = _.Array(${min}, ${max}, '${i}')`);
-          checks.addArray(i, arrType, min, max);
+          returnArr.push(`const ${i} = ${constructorStr}`);
+          checks.addArray(i, arrType, dimensionsArr);
         });
 
         return returnArr.join('\n');
       }
 
-      split = split.join(' ').split(/(?: ?\: ?| ?,? )/g); // split at " : " OR "," OR " "
+      /* Non-array declarations */
+
+      split = line.split(/(?: ?\: ?| ?,? )/g); // split at " : " OR "," OR " "
       varType = ConvertType(split.pop()); // convert Pseudocode type to JS type
       const vars = split.splice(1); // ignore first element: "DECLARE"
       vars.forEach(v => checks.addVar(v, null, varType));
       return `let ${vars.join(', ')}`;
     }
     case "CONSTANT": {
-      let statement = split.join(' ').replace(/CONSTANT/, 'const').replace(/===/g, '=');
+      let statement = line.replace(/CONSTANT/, 'const').replace(/===/g, '=');
       let val = eval(statement + `; ${split[1]}`);
       checks.addVar(split[1], val, TypeOf(val), true); // saves the constant, to record its changes
       return `const ${split[1]} = ${TypeOf(val) === 'string' ? `"${val}"` : val}`;
     }
+    case "TYPE": {
+
+    }
     case "PROCEDURE": {
-      let match = split.join(' ').match(/\((.+)\)/);
+      let match = line.match(/\((.+)\)/);
       if (!match) return `function ${split[1]}() {`
 
       let parSplit = match[1].split(' , ');
@@ -138,18 +153,20 @@ function ConvertLine(split) {
       parSplit.forEach(param => {
         let varSplit = param.split(' ');
         let varName = (['BYREF', 'BYVAL'].includes(varSplit[0]) ? varSplit[1] : varSplit[0]); // if there's a BYREF or BYVAL, ignore it
-        varType = ConvertTypeOf(varSplit.pop());
+        varType = ConvertType(varSplit.pop());
         checks.addVar(varName, null, varType);
         parameters.push(varName);
       });
-
+      checks.identifiers[split[1]] = {prop: "procedure", name: split[1]};
       return `function ${split[1]}(${parameters}) {` // make function header with all paramters
     }
     case "CALL": {
-      return `${split.slice(1,split.length).join('')}`;
+      if (checks.identifiers[split[1]].prop !== "procedure") error("CALL keyword is reserved for procedures only")
+      if (!line.endsWith(")")) split.push("()"); // pseudocode procedures can be called without (); this adds ()
+      return `${split.slice(1).join('')}`;
     }
     case "FUNCTION": {
-      let match = split.join(' ').match(/\((.+)\)/);
+      let match = line.match(/\((.+)\)/);
       if (!match) return `function ${split[1]}() {`
 
       let parSplit = match[1].split(' , ');
@@ -169,11 +186,11 @@ function ConvertLine(split) {
     }
     case "IF": {
       let last = split.pop();
-      split.push((last == "{" ? ") {" : ")"));
+      split.push((last == "{" ? ") {" : `${last})`));
       return `if(${split.slice(1, split.length).join(' ')}`;
     }
     case "FOR": {
-      let [func, i, min, max] = split.join(' ').split(/(?: ?<- ?| ?TO ?|FOR )+/g);
+      let [func, i, min, max] = line.split(/(?: ?<- ?| ?TO ?|FOR )+/g);
       return `for (${i} = ${min}; ${i} <= ${max}; ${i}++) {`;
     }
     case "WHILE": {
@@ -195,7 +212,7 @@ function ConvertLine(split) {
         return `_[${identifier}] = require("fs").readFileSync(${identifier}, {encoding: "utf-8"}).split("\\n")`; // no JS code for opening files
       else if (checks.files[identifier].state === "WRITE")
         return `require("fs").writeFileSync(${identifier}, "", {encoding: "utf-8"})`;
-      else (checks.files[identifier].state === "APPEND")
+      else if (checks.files[identifier].state === "APPEND")
         return "";
     }
     case "CLOSEFILE": {
@@ -208,17 +225,17 @@ function ConvertLine(split) {
       return `${split[3]} = _[${identifier}].splice(0, 1)[0]`; // "read one line"
     }
     case "WRITEFILE": {
-      if (!checks.files[identifier] || checks.files[identifier].state != "WRITE")
+      if (!checks.files[identifier] || !["WRITE", "APPEND"].includes(checks.files[identifier].state))
         error("Cannot write to file that is not open for writing");
 
-      let dataToWrite = split.join(' ').match(/(?<=, ).+/);
+      let dataToWrite = line.match(/(?<=, ).+/);
       if (dataToWrite)
         return `require("fs").appendFileSync(${identifier}, ${dataToWrite[0]}+'\\n')`;
       else
         error("Incomplete WRITEFILE statement: missing data");
     }
     default:
-      return split.join(' ');
+      return line;
   }
 }
 
@@ -228,18 +245,22 @@ let pcLines = fs.readFileSync('script.pc', {encoding: 'utf-8'}).split('\n');
 /* Includes: common built-in pseudocode functions, array constructors, environemnt variables */
 const headerLines = [
   "/* Built-in pseudocode functions */",
-  "const MID = (str, start, end) => str.slice(start-1, end+1);",
-  "const LEFT = (str, end) => str.slice(0, end+1);",
-  "const RIGHT = (str, end) => str.slice(str.length-2, end+1);",
-  "const LENGTH = (element) => Object.keys(element).length;",
+  "const MID = (str, start, end) => { if (typeof(str) !== 'string') throw new Error('First parameter of RIGHT must be of STRING type'); if (typeof(start) !== 'number' || start % 1 !== 0) throw new Error('Second parameter of RIGHT must be of INTEGER type'); if (typeof(end) !== 'number' || end % 1 !== 0) throw new Error('Third parameter of RIGHT must be of INTEGER type'); return str.slice(start-1, end+1); }",
+  "const LEFT = (str, end) => { if (typeof(str) !== 'string') throw new Error('First parameter of LEFT must be of STRING type'); if (typeof(end) !== 'number' || end % 1 !== 0) throw new Error('Second parameter of LEFT must be of INTEGER type'); return str.slice(0, end+1); }",
+  "const RIGHT = (str, end) => { if (typeof(str) !== 'string') throw new Error('First parameter of RIGHT must be of STRING type'); if (typeof(end) !== 'number' || end % 1 !== 0) throw new Error('Second parameter of RIGHT must be of INTEGER type'); return str.slice(str.length-2, end+1); }",
+  "const LENGTH = (element) => { if (typeof(element) === 'string' || Array.isArray(element)) return Object.keys(element).length; else throw new Error('LENGTH only accepts ARRAY or STRING type parameters')}",
+  "const LCASE = (char) => { if (typeof(char) !== 'string' || char.length !== 1) throw new Error('LCASE only accepts CHAR type parameters'); return char.toLowerCase(); }",
+  "const UCASE = (char) => { if (typeof(char) !== 'string' || char.length !== 1) throw new Error('UCASE only accepts CHAR type parameters'); return char.toUpperCase(); }",
+  "const INT = (num) => { if (typeof(num) !== 'number' || num % 1 === 0) throw new Error('INT only accepts REAL type parameters'); return num >> 0; }",
+  "const RAND = (upper) => { if (typeof(upper) !== 'number' && num % 1 !== 0 ) throw new Error('RAND only accepts INTEGER type parameters'); return Math.random() * upper; }",
   "\n/* Compiler variables */",
   "let _ = {};",
-  "_.Array = (min, max, arrName) => {",
-  "return new Proxy(Array(max - min + 1).fill(null), {",
-  "get: (target, name) => { if (name < min || name > max) throw (`${arrName} out of bounds`); return target[name - min] },",
-  "set: (target, name, value) => { if (name < min || name > max) throw (`${arrName} out of bounds`); target[name - min] = value }",
+  "_.Array = (min, max, fill=null) => {",
+  "return new Proxy(Array(max - min + 1).fill(fill), {",
+  "get: (target, name) => { if (name < min || name > max) throw new Error (`Index ${name} is out of array bounds`); return target[name - min] },",
+  "set: (target, name, value) => { if (name < min || name > max) throw new Error (`Index ${name} is out of array bounds`); target[name - min] = value }",
   "});\n}\n",
-  "/* Translated begins here code */"
+  "/* Translated code begins here */"
 ];
 
 fs.writeFileSync('compiled.js', headerLines.join('\n')); // create new compiled.js file
@@ -281,19 +302,22 @@ pcLines.forEach(pcLine => {
   pcLine = pcLine.replace(/THEN/g, '{');
   pcLine = pcLine.replace(/ELSE/g, '} else {');`` // the compiler doesn't use "else if", it uses else { if } (like real pseudocode)
 
-  let jsLine = ConvertLine(pcLine.split(/ +/g));
+  // Arrays
+  const ArrayPatten = /\[ ?\w+( ?, ?\w+)* ?\]/g //                        // matches: '[index]', '[3,7]', '[18,1,4]', etc. 
+  if (pcLine.match(ArrayPatten) && pcLine.split(' ')[0] !== "CONSTANT") {
+    let replacement = pcLine.match(ArrayPatten)[0].replace(/ , /g, ']['); // '[3,7]' ->  '[3][7]'
+    pcLine = pcLine.replace(ArrayPatten, replacement);                    // 'myArr[3,7]' -> 'myArr[3][7]`
+  }
+
+  let jsLine = ConvertLine(pcLine);
 
   // EOFs (need to be replaced after line conversion)
   if (jsLine.match(/EOF \([^\)]+\)/g)) {
     jsLine.match(/EOF \([^\)]+\)/g).forEach(e => {
       let identifier = GetFileName(e); // either filename, or variable
 
-      if (!checks.identifiers[identifier]) {
-        error("Cannot read EOF of unopened file");
-      }
-
-      if (checks.identifiers[identifier].state != "READ")
-        error("Cannot read EOF of file not open for reading.");
+      if (!checks.identifiers[identifier]) error("Cannot read EOF of unopened file");
+      if (checks.identifiers[identifier].state != "READ") error("Cannot read EOF of file not open for reading.");
 
       jsLine = jsLine.replace(e, `(_[${identifier}].length === 0)`); // file "reading" is only simulated, so is EOF
     });
@@ -302,18 +326,19 @@ pcLines.forEach(pcLine => {
   /* Assignment checks (constant assignment, data type checks, declaration checks). These conflict with FOR loops */
   if (jsLine.includes('<-')) {
     let [element, value] = jsLine.split(/ ?<- ?/g);
+    element = element.split(' ').pop();
 
-    if (!checks.identifiers[element])
-      error(`Cannot assign value to undeclared variable '${element}'`);
-    else if (checks.identifiers[element].constant)
-      error(`Cannot assign value to constant variable '${element}'`);
+    // if (!checks.identifiers[element])
+    //   error(`Cannot assign value to undeclared variable '${element}'`);
+    // else if (checks.identifiers[element].constant)
+    //   error(`Cannot assign value to constant variable '${element}'`);
 
     /* The below commented out lines are responsible for all type checking. The system is broken */
     /* TODO: Fix type checking */
     // if (!value.includes(element) && checks.identifiers[element].type !== TypeOf(value) || checks.identifiers[element.type] == "float" && !['float', 'int'].includes(TypeOf(value))) // first, make sure the "value" doesn't contain the var's name
     //   error(`Cannot assign value to '${element}' of a different data type`);
   
-    checks.identifiers[element].value = value;
+    // checks.identifiers[element].value = value;
     jsLine = jsLine.replace(/<-/, '=');
   }
 
@@ -326,5 +351,4 @@ Object.keys(checks.files).forEach(i => {
     lineCounter = pcLines.findIndex(l => l.includes("OPENFILE " + i)) + 1; // find the line with the supposed unclosed file
     error("Cannot execute script with unclosed files.");
   }
-})
-
+});

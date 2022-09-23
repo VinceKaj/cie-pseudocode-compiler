@@ -5,6 +5,7 @@ __Done:__
   + BOOLEAN
   + Constants
   + Arrays
+    + Multi-dimensional arrays
 + Operators
   + Plus
   + Minus
@@ -32,9 +33,19 @@ __Done:__
   + RETURN
 
 __TBC:__
+- CASE statements
+  - Ranges
+  - Must contain OTHERWISE
+- Parameters BYREF
 - Variable scopes
+- REPEAT...UNTIL
 - Types
   - Custom types
-  - Multi-dimensional arrays
+    - Pointer types?
+    - Composite types (structs)
+    - Uncomposite (enums)
   - Validating built-in types
-    - TYPE
+- I/O
+  - Files
+    - Binary (random) files 
+- OOP?
