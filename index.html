@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CAIE Pseudocode Compiler</title>
+    <meta charset="utf-8" />
+  </head>
+  <style>
+
+    hr {
+      margin-bottom: 0.7em;
+    }
+
+    body {
+      text-align: center;
+      font-family: Arial;
+      background: rgb(25,25,25);;
+    }
+
+    p, textarea,li {
+      text-align: left;
+    }
+    
+    .codebox {
+      width: 100%;
+      background: rgb(39,39,39);
+      font-family: Consolas,monaco,monospace; 
+    }
+
+    .left {
+      float: left;
+      width: 15%;
+    }
+
+    .middle {
+      float: left;
+      width: 50.2%;
+    }
+
+    .right {
+      width: 33%;
+      float: right;
+    }
+
+    .box {
+      box-sizing: border-box;
+      margin-left: 0.3%;
+      margin-right: 0.3%;
+      background: rgb(28,28,28);
+      height: 100%;
+      border: 1px solid gray;
+      top: 0;
+      padding: 1em;
+    }
+
+    .box * {
+      color: white;
+    }
+
+    .run-btn {
+      background: rgb(45,45,45);
+      padding: 6px 12px 6px 12px;
+      margin: 0.6em;
+      font-size: 1.1em;
+      border-radius: 8px;
+      border: 1px solid rgb(60,60,60);
+    }
+
+    .run-btn:hover {
+      cursor: pointer;
+      background-color: rgb(52,52,52);
+    }
+
+    .run-btn:active {
+      background: rgb(55,55,55);
+    }
+
+    #file-list {
+      border: 1px solid #fff;
+      padding-top: 0.4em;
+      padding-bottom: 0.4em;
+      margin-bottom: 0;
+    }
+
+    #file-list * {
+      margin: 0.1em;
+    }
+
+  </style>
+  <body>
+    <div class="box left">
+      <h1>Files</h1>
+      <hr>
+      <ul>
+        <input type="file" id="script-upload" onchange="OpenScript()" style="display:none" /> 
+        <li><a href="#" id="open-btn" onclick="Open()">Open script</a></li>
+        <li><a href="#" onclick="Export('pseudocode.txt')">Export script</a></li>
+        <li><a href="#" onclick="Export('output.txt')">Export output</a></li>
+        <li><a href="#" onclick="Export('translation.js')">Export JavaScript translation</a></li>
+      </ul>
+      <h2>Directory</h2>
+      <div id="upload-box">
+        <label>Choose files to upload</label>
+        <input id="file-chooser" type="file" onchange="Upload()" multiple/>
+        <ul id="file-list">
+
+        </ul>
+      </div>
+    </div>
+    <div class="box middle">
+      <h1>
+        Editor
+      </h1>
+      <hr>
+      <textarea rows="25" class="codebox" id="editor">OUTPUT "Hello, world!"</textarea>
+
+      <h2>Output</h2>
+      <textarea rows="7" class="codebox" id="output" readonly>Click Run! to see what happens.</textarea>
+      <br>
+      <button class="run-btn" onclick="Execute()">Run!</button>
+    </div>
+    <div class="box right">
+      <h1>CAIE Pseudocode Compiler</h1>
+      <hr>
+      <p>CAIE Pseudocode compiler enables students to run pseudocode (on the web!). Write pseudocode in the editor on the left, and click <b>Run!</b> to execute it. <br><br><b>Note:</b> some pseudocode features may be missing, don't use this to reliably check your code for errors. It's only intended to run validated code.</b><br><br>Some useful resources:</p>
+      <ul>
+        <li><a href="guide.pdf">Pseudocode guide</a></li>
+        <li><a href="https://github.com/VinceKaj/cie-pseudocode-compiler/">Project Github page</a></li>
+      </ul>
+    </div>
+  </body>
+  <script src="compiler.js"></script>
+  <script src="files.js"></script>
+  <script>
+    document.getElementById('open-btn').onclick = function() {
+      document.getElementById('script-upload').click();
+    }
+  </script>
+</html>
