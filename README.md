@@ -5,7 +5,7 @@ The full CIE Pseudocode guide can be found [here](https://github.com/VinceKaj/ci
 
 ## How to use it
 
-**Note**: This project requires `node` and `npm`. The browser version is **coming soon**.
+**Note**: This project requires `node` and `npm`. The browser version can be found [**here**](http://vincekaj.ml/pseudocode).
 
 Installation and usage:
 
