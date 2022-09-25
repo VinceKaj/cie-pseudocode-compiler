@@ -136,7 +136,7 @@ function Execute() {
 
   function ConvertLine(line) {
 
-    const identifier = GetFileName(line);
+    let identifier = GetFileName(line);
     let split = line.split(' ');
     let varType;
   
@@ -194,11 +194,23 @@ function Execute() {
   
       }
       case "PROCEDURE": {
+
+        /* Scan through lines to find ENDPROCEDURE */
+        for (let i = lineCounter; i < pcLines.length; i++) {
+          if (pcLines[i].includes("FUNCTION") || pcLines[i].includes("PROCEDURE")) {
+            lineCounter = i + 1;
+            error('A FUNCTION or PROCEDURE cannot be opened within a PROCEDURE');
+          }
+        }
+        const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes("ENDPROCEDURE"));
+        if (endIndex === -1) error('PROCEDURE with no closing statement');
+
+        /* Building the procedure header */
         let match = line.match(/\((.+)\)/);
         if (!match) return `function ${split[1]}() {`
   
         let parSplit = match[1].split(' , ');
-      
+
         parameters = [];
         parSplit.forEach(param => {
           let varSplit = param.split(' ');
@@ -208,6 +220,8 @@ function Execute() {
           parameters.push(varName);
         });
         checks.identifiers[split[1]] = {prop: "procedure", name: split[1]};
+
+        /* Return header */
         return `function ${split[1]}(${parameters}) {` // make function header with all paramters
       }
       case "CALL": {
@@ -216,13 +230,25 @@ function Execute() {
         return `${split.slice(1).join('')}`;
       }
       case "FUNCTION": {
+
+        /* Scan through lines to find ENDFUNCTION */
+        for (let i = lineCounter; i < pcLines.length; i++) {
+          console.log(i, pcLines[i])
+          if ((pcLines[i].includes("FUNCTION") || pcLines[i].includes("PROCEDURE")) && !(pcLines[i].includes("ENDFUNCTION") || pcLines[i].includes("ENDPROCEDURE"))) {
+            lineCounter = i+1;
+            error('A FUNCTION or PROCEDURE cannot be opened within a FUNCTION');
+          }
+        }
+        const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes("ENDFUNCTION"));
+        if (endIndex === -1) error('FUNCTION with no closing statement');
+
+        /* Building the function header */
         let match = line.match(/\((.+)\)/);
         if (!match) return `function ${split[1]}() {`
-  
+
         let parSplit = match[1].split(' , ');
-  
         let returnType = split.pop();
-  
+
         checks.identifiers[split[1]] = {prop: "function", name: split[1], type: ConvertType(returnType)};
       
         parameters = [];
@@ -232,18 +258,76 @@ function Execute() {
           checks.addVar(varSplit[0], null, varType);
           parameters.push(varSplit[0]);
         });
+
+        /* Return full header */
         return `function ${split[1]}(${parameters}) {` // make function header with all paramters
       }
       case "IF": {
         let last = split.pop();
         split.push((last == "{" ? ") {" : `${last})`));
+
+        const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes("ENDIF"));
+        if (endIndex === -1) error('IF with no closing statement');
+
         return `if(${split.slice(1, split.length).join(' ')}`;
+      }
+      case "CASE": {
+        if (split[1] != "OF") {
+          error("Invalid syntax for CASE OF");
+        }
+
+        let index = pcLines.slice(lineCounter-1).findIndex(e => e.includes("ENDCASE")) + lineCounter - 1;
+        if (index == -1) error("CASE with no closing statement");
+
+        let otherwiseFound = false; // keeps track of number of OTHERWISE (default) statements
+        identifier = split[2];      // used for 'case's in following loop
+
+        for (let i = lineCounter; i < index; i++) {
+        
+          if (pcLines[i].replace(/\s/g, "").startsWith("//")) continue; // ignore if line is commented
+          
+          let virtualSplit = pcLines[i].split(/: */);
+          if (virtualSplit.length === 1) continue; // not a new case line
+
+          if (virtualSplit[0].includes(" TO ")) {
+            let [min, max] = virtualSplit[0].split(/ +TO +/);
+
+            if (min*1 > max*1) {
+              lineCounter = i + 1;
+              error("'TO' range must written in the form 'min TO max'");
+            }
+            pcLines[i] = `case ${identifier} >= ${min} AND ${identifier} <= ${max}: ${ConvertLine(virtualSplit[1])}; break;`;
+
+          } else if (virtualSplit[0].includes("OTHERWISE")) {
+
+            if (otherwiseFound) {
+              lineCounter = i + 1;
+              error("CASE statement cannot have more than one OTHERWISE");
+            }
+            pcLines[i] = `default: ${ConvertLine(virtualSplit[1])}; break;`;
+            otherwiseFound = true;
+
+          } else {
+            pcLines[i] = `case ${identifier} = ${virtualSplit[0]}: ${ConvertLine(virtualSplit[1])}; break;`;
+          }
+        }
+
+        pcLines[index] = "}"; // 'ENDCASE' -> '}'
+
+        return `switch (true) {`; // (true) allows the use of ranges
       }
       case "FOR": {
         let [func, i, min, max] = line.split(/(?: ?<- ?| ?TO ?|FOR )+/g);
+
+        const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes(`NEXT ${i}`));
+        if (endIndex === -1) error('FOR with no closing statement');
+
         return `for (${i} = ${min}; ${i} <= ${max}; ${i}++) {`;
       }
       case "WHILE": {
+        const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes("ENDWHILE"));
+        if (endIndex === -1) error('WHILE with no closing statement');
+
         return `while(${split.slice(1, split.length).join(' ')}) {`;
       }
       case "INPUT": {
