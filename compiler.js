@@ -1,7 +1,7 @@
 let output = document.getElementById('output');
 
-output.log = (txt) => {
-  output.innerHTML += txt + '\n';
+output.log = (...txt) => {
+  output.innerHTML += txt.join('') + '\n';
 }
 
 let pcLines, JS_Script, lineCounter;
