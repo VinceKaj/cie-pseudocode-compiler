@@ -264,7 +264,7 @@ function Execute() {
       }
       case "IF": {
         let last = split.pop();
-        split.push((last == "{" ? ") {" : `${last})`));
+        split.push((last == "{" ? ") {" : `${last}) {`));
 
         const endIndex = pcLines.slice(lineCounter).findIndex(e => e.includes("ENDIF"));
         if (endIndex === -1) error('IF with no closing statement');
@@ -390,12 +390,14 @@ function Execute() {
     /* Operators */
     pcLine = pcLine.replace(/MOD/g, '%'); // modulus
     pcLine = pcLine.replace(/(?<!<|>)=/g, '==='); // equal sign, unless it is a "<=" or ">="
+    pcLine = pcLine.replace(/\<\>/g, "!=="); // "<>" into "!=="
     pcLine = pcLine.replace(/&/g, "+");
-    pcLine = pcLine.replace(/NOT/g, "!");
-    pcLine = pcLine.replace(/AND/g, "&&"); // "AND", (TODO: don't match AND within a word)
+    pcLine = pcLine.replace(/(?<!\w)NOT(?!\w)/g, "!");
+    pcLine = pcLine.replace(/(?<!\w)AND(?!\w)/g, "&&"); // "AND", (TODO: don't match AND within a word)
+    pcLine = pcLine.replace(/(?<!\w)OR(?!\w)/g, "||"); // "OR", (TODO: don't match OR within a word)
     pcLine = pcLine.replace(/^[^a-zA-Z]*OR/g, "||"); // "OR", unless it is preceeded by letters
-    pcLine = pcLine.replace(/TRUE/g, "true"); // TODO: make sure this isn't in a string?
-    pcLine = pcLine.replace(/FALSE/g, "false"); // TODO: make sure this isn't in a string?
+    pcLine = pcLine.replace(/(?<!\w)TRUE(?!\w)/g, "true"); // TODO: make sure this isn't in a string?
+    pcLine = pcLine.replace(/(?<!\w)FALSE(?!\w)/g, "false"); // TODO: make sure this isn't in a string?
   
     // Functions
     pcLine = pcLine.replace(/ENDPROCEDURE/, '}');
